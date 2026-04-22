@@ -66,6 +66,8 @@ func (s *Upfluence) GetStream(duration time.Duration) ([]stream.Data, error) {
 			continue
 		}
 
+		// we fetch each data from the stream as a json table that contains one single element, the key being the dynamic platform identifier (instagram_media, tweet, etc...),
+		// and the data being the real struct we need to extract and return
 		var platformData map[string]json.RawMessage
 
 		if err := json.Unmarshal([]byte(line), &platformData); err != nil {
@@ -73,6 +75,7 @@ func (s *Upfluence) GetStream(duration time.Duration) ([]stream.Data, error) {
 			continue
 		}
 
+		// we range through the table to fetch the single item and read it as a json object, so we can append it to our results array
 		for _, payload := range platformData {
 			var data stream.Data
 
@@ -82,8 +85,7 @@ func (s *Upfluence) GetStream(duration time.Duration) ([]stream.Data, error) {
 			}
 
 			results = append(results, data)
-
-			break
+			break // single item, don't need to go further down the table
 		}
 	}
 

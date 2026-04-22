@@ -1,7 +1,11 @@
 package compute
 
-import "context"
-
 type IService interface {
-	FilterData(ctx context.Context) Data
+	ComputePercentiles(metrics []uint32) Data
+}
+
+type Data struct {
+	P50 uint32
+	P90 uint32
+	P99 uint32
 }

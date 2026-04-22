@@ -36,6 +36,18 @@ func (h *analysisHandler) analyseData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var metrics []uint32
+
+	for _, dimension := range data {
+		if dimension.Retweets != nil {
+			metrics = append(metrics, *dimension.Retweets)
+		}
+	}
+
+	percentiles := h.computeService.ComputePercentiles(metrics)
+
+	// TODO: build here response payload using a dto
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		panic(err)

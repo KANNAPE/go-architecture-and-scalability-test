@@ -1,6 +1,6 @@
 package compute
 
-import "context"
+import "slices"
 
 // compute will make all the math needed to handle percentiles
 
@@ -11,9 +11,13 @@ func NewService() *Service {
 	return &Service{}
 }
 
-func (s *Service) FilterData(ctx context.Context) Data {
-	return Data{}
-}
+// returns an error?
+func (s *Service) ComputePercentiles(metrics []uint32) Data {
+	slices.Sort(metrics)
 
-type Data struct {
+	// compute indexes for percentiles 50, 90, 99
+
+	// return data
+
+	return Data{}
 }
