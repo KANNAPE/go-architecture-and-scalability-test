@@ -66,16 +66,25 @@ func (s *Upfluence) GetStream(duration time.Duration) ([]stream.Data, error) {
 			continue
 		}
 
-		data := struct {
-			Payload stream.Data `json:"instagram_media"` // trouver comme faire mieux et récup les autres types de data
-		}{}
+		var platformData map[string]json.RawMessage
 
-		if err := json.Unmarshal([]byte(line), &data); err != nil {
+		if err := json.Unmarshal([]byte(line), &platformData); err != nil {
 			errs = append(errs, fmt.Errorf("Failed to unmarshal data \"%s\": %w", line, err))
 			continue
 		}
 
-		results = append(results, data.Payload)
+		for _, payload := range platformData {
+			var data stream.Data
+
+			if err := json.Unmarshal(payload, &data); err != nil {
+				errs = append(errs, fmt.Errorf("Failed to unmarshal data \"%s\": %w", line, err))
+				break
+			}
+
+			results = append(results, data)
+
+			break
+		}
 	}
 
 	// making sure the scan stopped because the duration was reached, not anything else
