@@ -29,4 +29,10 @@ func (service *Service) GetStream(duration time.Duration) ([]Data, error) {
 }
 
 type Data struct {
+	ID        int64  `json:"id"`
+	Timestamp uint64 `json:"timestamp"`
+	Likes     uint32 `json:"likes,omitempty"`
+	Comments  uint32 `json:"comments,omitempty"`
+	Favorites uint32 `json:"favorites,omitempty"`
+	Retweets  uint32 `json:"retweets,omitempty"`
 }

@@ -10,9 +10,11 @@ import (
 func main() {
 	fmt.Println("Hello World!")
 
-	streamRepo := stream.NewUpfluenceStream("https://stream.upfluence.com")
+	streamRepo := stream.NewUpfluenceStream("https://stream.upfluence.co")
 
 	server := httpx.NewServer(streamRepo)
 
-	server.Start()
+	if err := server.Start(); err != nil {
+		panic(err)
+	}
 }
