@@ -1,11 +1,5 @@
 package compute
 
 type IService interface {
-	ComputePercentiles(metrics []uint32) Data
-}
-
-type Data struct {
-	P50 uint32
-	P90 uint32
-	P99 uint32
+	ComputePercentile(metrics []uint32, percentile float32) (float32, error)
 }

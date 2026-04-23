@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 
+	"kannape.com/upfluence-test/internal/services/compute"
 	"kannape.com/upfluence-test/internal/services/stream"
 )
 
@@ -22,6 +23,7 @@ func NewServer(streamRepo stream.IRepository) *Server {
 func (server *Server) Start() error {
 	services := services{
 		streamService: stream.NewService(server.streamRepo),
+		computeService: compute.NewService(),
 	}
 
 	registerRoutes(server, services)

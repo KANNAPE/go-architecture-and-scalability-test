@@ -12,7 +12,7 @@ type IService interface {
 
 type Data struct {
 	ID        int64   `json:"id"`
-	Timestamp uint64  `json:"timestamp"`
+	Timestamp int64   `json:"timestamp"`
 	Likes     *uint32 `json:"likes"`
 	Comments  *uint32 `json:"comments"`
 	Favorites *uint32 `json:"favorites"`

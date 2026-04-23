@@ -39,17 +39,27 @@ func (h *analysisHandler) analyseData(w http.ResponseWriter, r *http.Request) {
 	var metrics []uint32
 
 	for _, dimension := range data {
-		if dimension.Retweets != nil {
-			metrics = append(metrics, *dimension.Retweets)
+		if dimension.Likes != nil {
+			metrics = append(metrics, *dimension.Likes)
 		}
 	}
 
 	percentiles := h.computeService.ComputePercentiles(metrics)
 
 	// TODO: build here response payload using a dto
+	responseDTO := AnalysisResponseDTO{
+		TotalPosts:   len(data),
+		MinTimestamp: 0,
+		MaxTimestamp: 0,
+		Dimension:    "likes",
+		P50:          percentiles.P50,
+		P90:          percentiles.P90,
+		P99:          percentiles.P99,
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(data); err != nil {
+
+	if err := json.NewEncoder(w).Encode(responseDTO.ToJSONMap()); err != nil {
 		panic(err)
 	}
 }
