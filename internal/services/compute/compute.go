@@ -28,7 +28,9 @@ func (s *Service) ComputePercentile(dataset []uint32, percentile float32) (float
 	}
 
 	// we make sure our dataset is sorted
-	slices.Sort(dataset)
+	if !slices.IsSorted(dataset) {
+		slices.Sort(dataset)
+	}
 
 	// we first need to retrieve the rank and the "integer" part of the rank
 	rank := percentile * float32((len(dataset) - 1))
