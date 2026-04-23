@@ -7,12 +7,12 @@ type AnalysisResponseDTO struct {
 	MinTimestamp int64
 	MaxTimestamp int64
 	Dimension    string
-	P50          uint32
-	P90          uint32
-	P99          uint32
+	P50          float32
+	P90          float32
+	P99          float32
 }
 
-// ToJSONMap is a func that will map the values to the json object we'll return to the user, with the dynamic stats fields 
+// ToJSONMap is a func that will map the values to the json object we'll return to the user, with the dynamic stats fields
 func (dto AnalysisResponseDTO) ToJSONMap() map[string]interface{} {
 	return map[string]interface{}{
 		"total_posts":       dto.TotalPosts,
