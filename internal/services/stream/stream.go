@@ -2,6 +2,7 @@ package stream
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -23,9 +24,13 @@ func (service *Service) GetStream(duration time.Duration) ([]Data, error) {
 		if len(dataArray) == 0 {
 			return nil, fmt.Errorf("failed to get stream from repo: %w", err)
 		}
-		
-		// errors from reading some data, but the array is not empty, we log then discard
-		fmt.Printf("warning: some data couldn't be parsed: %s", err.Error())
+
+		// Errors occurred while reading some data, but the array is not empty.
+		// We log the warning and return the partial data safely.
+		slog.Warn("partial data fetched with errors",
+			slog.String("error", err.Error()),
+			slog.Int("retrieved_items", len(dataArray)),
+		)
 	}
 
 	return dataArray, nil

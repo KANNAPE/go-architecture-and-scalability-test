@@ -1,32 +1,29 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
+	"os"
 
 	"kannape.com/upfluence-test/internal/platforms/stream"
-	httpx "kannape.com/upfluence-test/internal/router/http"
+	"kannape.com/upfluence-test/internal/router/http"
 )
 
 func main() {
-	fmt.Println("Hello World!")
+	// Initialize a structured JSON logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 
+	slog.Info("Starting Upfluence Analysis API server...")
+
+	// Initialize the Upfluence stream platform
 	streamRepo := stream.NewUpfluenceStream("https://stream.upfluence.co")
 
-	server := httpx.NewServer(streamRepo)
+	// Initialize and start the HTTP server
+	server := http.NewServer(streamRepo)
 
+	slog.Info("Server is configured and ready to listen on port 8080")
 	if err := server.Start(); err != nil {
-		panic(err)
+		slog.Error("Server crashed", "error", err.Error())
+		os.Exit(1)
 	}
 }
-
-/*****************************
-TODO:
-
-- logger des trucs
-
-- créer un dossier pkg qui va contenir une struct pour chaque route (là en l'occurence juste une pour /analysis) /\ la struct en question
-
-
-- commentaires et finir le README
-
-*/

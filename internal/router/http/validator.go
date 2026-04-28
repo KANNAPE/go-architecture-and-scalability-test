@@ -27,17 +27,17 @@ func (v *RequestValidator) Validate(i interface{}) error {
 
 		// Validate 'duration'
 		if strings.TrimSpace(req.Duration) == "" {
-			validationErrors["duration"] = "This parameter is required."
+			validationErrors["duration"] = "this parameter is required"
 		} else if _, err := time.ParseDuration(req.Duration); err != nil {
-			validationErrors["duration"] = "Invalid format. Expected a time duration like '5s', '10m', or '24h'."
+			validationErrors["duration"] = "invalid format: expected a time duration like '5s', '10m', or '24h'"
 		}
 
 		// Validate 'dimension'
 		allowedDimensions := []string{"likes", "comments", "favorites", "retweets"}
 		if strings.TrimSpace(req.Dimension) == "" {
-			validationErrors["dimension"] = "This parameter is required."
+			validationErrors["dimension"] = "this parameter is required"
 		} else if !slices.Contains(allowedDimensions, strings.ToLower(req.Dimension)) {
-			validationErrors["dimension"] = "Unsupported dimension. Handled dimensions are 'likes', 'comments', 'favorites', and 'retweets'."
+			validationErrors["dimension"] = "unsupported dimension: handled dimensions are 'likes', 'comments', 'favorites', and 'retweets'"
 		}
 
 		// If the map is not empty, it means we have validation errors
