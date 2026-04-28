@@ -2,6 +2,7 @@
 package compute_test
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
@@ -13,6 +14,7 @@ func floatNearlyEquals(a, b float64) bool {
 }
 
 func TestComputePercentiles(t *testing.T) {
+	// defining test cases
 	tests := []struct {
 		name        string
 		input       []uint32
@@ -31,7 +33,12 @@ func TestComputePercentiles(t *testing.T) {
 		{
 			name:        "Empty dataset case",
 			input:       []uint32{},
-			expectedErr: "dataset is empty or doesn't contain enough values",
+			expectedErr: fmt.Sprintf("dataset is empty or doesn't contain enough values (minimum expected values: %d)", compute.MinDatasetLength),
+		},
+		{
+			name:        "Nil dataset case",
+			input:       nil,
+			expectedErr: fmt.Sprintf("dataset is empty or doesn't contain enough values (minimum expected values: %d)", compute.MinDatasetLength),
 		},
 		{
 			name:        "Real case",
@@ -47,7 +54,7 @@ func TestComputePercentiles(t *testing.T) {
 		t.Run(testcase.name, func(t *testing.T) {
 			service := compute.NewService()
 
-			p50, err := service.ComputePercentile(testcase.input, 0.5)
+			p50, err := service.ComputePercentile(t.Context(), testcase.input, 0.5)
 			if err != nil && err.Error() != testcase.expectedErr {
 				t.Errorf("unexpected error: %v", err)
 				return
@@ -57,7 +64,7 @@ func TestComputePercentiles(t *testing.T) {
 				return
 			}
 
-			p90, err := service.ComputePercentile(testcase.input, 0.9)
+			p90, err := service.ComputePercentile(t.Context(), testcase.input, 0.9)
 			if err != nil && err.Error() != testcase.expectedErr {
 				t.Errorf("unexpected error: %v", err)
 				return
@@ -67,7 +74,7 @@ func TestComputePercentiles(t *testing.T) {
 				return
 			}
 
-			p99, err := service.ComputePercentile(testcase.input, 0.99)
+			p99, err := service.ComputePercentile(t.Context(), testcase.input, 0.99)
 			if err != nil && err.Error() != testcase.expectedErr {
 				t.Errorf("unexpected error: %v", err)
 				return

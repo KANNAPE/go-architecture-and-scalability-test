@@ -3,6 +3,7 @@ package http
 import (
 	"kannape.com/upfluence-test/internal/services/compute"
 	"kannape.com/upfluence-test/internal/services/stream"
+	"kannape.com/upfluence-test/internal/usecases"
 )
 
 type services struct {
@@ -11,7 +12,10 @@ type services struct {
 }
 
 func registerRoutes(server *Server, services services) {
-	analysisHandler := newAnalysisHandler(services.streamService, services.computeService)
+	analysisUseCases := usecases.NewAnalysisUseCase()
+
+	analysisHandler := newAnalysisHandler(services.streamService, analysisUseCase)
+
 
 	server.router.HandleFunc("GET /analysis", analysisHandler.analyseData)
 }

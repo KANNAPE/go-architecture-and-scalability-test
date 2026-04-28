@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -97,5 +96,5 @@ func (s *Upfluence) GetStream(duration time.Duration) ([]stream.Data, error) {
 	}
 
 	// return data
-	return results, errors.Join(errs...)
+	return results, nil
 }

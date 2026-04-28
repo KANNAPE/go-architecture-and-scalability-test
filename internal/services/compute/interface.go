@@ -1,5 +1,7 @@
 package compute
 
+import "context"
+
 type IService interface {
-	ComputePercentile(metrics []uint32, percentile float32) (float32, error)
+	ComputePercentile(ctx context.Context, dataset []uint32, percentile float32) (float32, error)
 }

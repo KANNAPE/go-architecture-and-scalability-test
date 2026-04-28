@@ -2,22 +2,22 @@ package http
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
-	"kannape.com/upfluence-test/internal/services/compute"
 	"kannape.com/upfluence-test/internal/services/stream"
 )
 
 type analysisHandler struct {
 	streamService  stream.IService
-	computeService compute.IService
+	analysis
 }
 
 // newAnalysisHandler creates a new analysis handler for HTTP requests using the given services
-func newAnalysisHandler(streamService stream.IService, computeService compute.IService) *analysisHandler {
+func newAnalysisHandler(streamService stream.IService, ) *analysisHandler {
 	return &analysisHandler{
 		streamService:  streamService,
 		computeService: computeService,
@@ -31,6 +31,8 @@ func newAnalysisHandler(streamService stream.IService, computeService compute.IS
 // When the duration is reached, the connection to the stream is cut and we'll return a JSON payload that'll contain the total number of posts analyzed,
 // the timestamp range of the monitored, and the 50, 90, and 99 percentiles of the dimension that we chose to monitor
 func (h *analysisHandler) analyseData(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	// fetching query parameters
 	durationStr := r.URL.Query().Get("duration")
 	dimensionStr := r.URL.Query().Get("dimension")
@@ -40,15 +42,15 @@ func (h *analysisHandler) analyseData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.TrimSpace(dimensionStr) == "" {
-		http.Error(w, "'dimension' parameter is missing!", http.StatusBadRequest)
-		return
-	}
-
 	// parsing duration
 	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
-		http.Error(w, "duration format invalid!", http.StatusBadRequest)
+		http.Error(w, "duration format invalid! (value should either be in seconds 's', minutes 'm', or hours 'h')", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(dimensionStr) == "" {
+		http.Error(w, "'dimension' parameter is missing!", http.StatusBadRequest)
 		return
 	}
 
@@ -57,13 +59,14 @@ func (h *analysisHandler) analyseData(w http.ResponseWriter, r *http.Request) {
 
 	isValidDimension := slices.Contains(allowedDimensions, strings.ToLower(dimensionStr))
 	if !isValidDimension {
-		http.Error(w, "dimension is not supported! (current handled dimension are 'likes', 'comments', 'favorties', and 'retweets')", http.StatusBadRequest)
+		http.Error(w, "dimension is not supported! (current handled dimension are 'likes', 'comments', 'favorites', and 'retweets')", http.StatusBadRequest)
 		return
 	}
 
 	// reading data from stream
 	data, err := h.streamService.GetStream(duration)
 	if err != nil {
+		log.Printf("error: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -102,21 +105,21 @@ func (h *analysisHandler) analyseData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 50th percentile
-	p50, err := h.computeService.ComputePercentile(metrics, 0.5)
+	p50, err := h.computeService.ComputePercentile(ctx, metrics, 0.5)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// 90th percentile
-	p90, err := h.computeService.ComputePercentile(metrics, 0.9)
+	p90, err := h.computeService.ComputePercentile(ctx, metrics, 0.9)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// 99th percentile
-	p99, err := h.computeService.ComputePercentile(metrics, 0.99)
+	p99, err := h.computeService.ComputePercentile(ctx, metrics, 0.99)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
