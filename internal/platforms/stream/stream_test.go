@@ -13,11 +13,11 @@ import (
 func TestUpfluence_GetStream(t *testing.T) {
 	// defining test cases
 	tests := []struct {
-		name          string
-		mockHandler   http.HandlerFunc
-		duration      time.Duration
-		expectedLen   int
-		expectedError bool
+		name        string
+		mockHandler http.HandlerFunc
+		duration    time.Duration
+		expectedLen int
+		expectedErr bool
 	}{
 		{
 			name: "Real case",
@@ -26,39 +26,39 @@ func TestUpfluence_GetStream(t *testing.T) {
 
 				fmt.Fprintln(w, `data: {"instagram_media": {"id": 1, "timestamp": 1600000000, "likes": 100}}`)
 				fmt.Fprintln(w, `data: {"tweet": {"id": 2, "timestamp": 1600000005, "retweets": 50}}`)
-				
+
 				// making sure the client has enough time to read data
 				time.Sleep(50 * time.Millisecond)
 			},
-			duration:      100 * time.Millisecond,
-			expectedLen:   2,
-			expectedError: false,
+			duration:    100 * time.Millisecond,
+			expectedLen: 2,
+			expectedErr: false,
 		},
 		{
 			name: "Malformed JSON case",
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "text/event-stream")
-				
+
 				// sending a mix of valid data, empty lines, and malformed JSON
 				fmt.Fprintln(w, `data: {"instagram_media": {"id": 1, "timestamp": 1600000000, "likes": 100}}`)
 				fmt.Fprintln(w, `\n`) // blank line
 				fmt.Fprintln(w, `data: THIS IS NOT VALID JSON`)
 				fmt.Fprintln(w, `data: {"tweet": {"id": 2, "timestamp": 1600000005, "retweets": 50}}`)
-				
+
 				time.Sleep(50 * time.Millisecond)
 			},
-			duration:      100 * time.Millisecond,
-			expectedLen:   2, // should still be 2 because the invalid line and the blank line are skipped
-			expectedError: false,
+			duration:    100 * time.Millisecond,
+			expectedLen: 2, // should still be 2 because the invalid line and the blank line are skipped
+			expectedErr: false,
 		},
 		{
 			name: "Error 500 case",
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			},
-			duration:      50 * time.Millisecond,
-			expectedLen:   0,
-			expectedError: true,
+			duration:    50 * time.Millisecond,
+			expectedLen: 0,
+			expectedErr: true,
 		},
 	}
 
@@ -72,10 +72,10 @@ func TestUpfluence_GetStream(t *testing.T) {
 
 			data, err := client.GetStream(testcase.duration)
 
-			if testcase.expectedError && err == nil {
+			if testcase.expectedErr && err == nil {
 				t.Fatalf("expected an error but got nil")
 			}
-			if !testcase.expectedError && err != nil {
+			if !testcase.expectedErr && err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 

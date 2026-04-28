@@ -2,7 +2,16 @@ package http
 
 import "fmt"
 
-type AnalysisResponseDTO struct {
+// AnalysisRequest represents the expected query parameters
+// for the GET /analysis endpoint.
+type AnalysisRequest struct {
+	Duration  string `query:"duration"`
+	Dimension string `query:"dimension"`
+}
+
+// AnalysisResponse represents the successful JSON response payload.
+// The percentile fields are dynamically mapped in the ToJSONMap function.
+type AnalysisResponse struct {
 	TotalPosts   int
 	MinTimestamp int64
 	MaxTimestamp int64
@@ -12,8 +21,9 @@ type AnalysisResponseDTO struct {
 	P99          float32
 }
 
-// ToJSONMap is a func that will map the values to the json object we'll return to the user, with the dynamic stats fields
-func (dto AnalysisResponseDTO) ToJSONMap() map[string]interface{} {
+// ToJSONMap dynamically generates the response map to ensure
+// the percentile keys exactly match the requested dimension.
+func (dto AnalysisResponse) ToJSONMap() map[string]interface{} {
 	return map[string]interface{}{
 		"total_posts":       dto.TotalPosts,
 		"minimum_timestamp": dto.MinTimestamp,

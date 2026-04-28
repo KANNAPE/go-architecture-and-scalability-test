@@ -1,3 +1,13 @@
 package http
 
-// all the structs that will be sent to the user when an error has occurred
+// ErrorResponse represents the standardized JSON error payload
+// sent to the client when an API request fails.
+type ErrorResponse struct {
+	Title     string                 `json:"title"`
+	Status    int                    `json:"status"`
+	Detail    string                 `json:"detail,omitempty"`
+	Instance  string                 `json:"instance,omitempty"`
+	RequestID string                 `json:"request_id,omitempty"`
+	Timestamp string                 `json:"timestamp"`
+	Errors    map[string]interface{} `json:"errors,omitempty"`
+}

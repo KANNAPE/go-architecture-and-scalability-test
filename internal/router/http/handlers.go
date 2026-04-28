@@ -1,143 +1,110 @@
 package http
 
 import (
-	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 
+	"github.com/labstack/echo/v4"
+
 	"kannape.com/upfluence-test/internal/services/stream"
+	"kannape.com/upfluence-test/internal/usecases"
 )
 
 type analysisHandler struct {
-	streamService  stream.IService
-	analysis
+	streamService stream.IService
+	useCase       *usecases.ComputePercentilesUseCase
 }
 
-// newAnalysisHandler creates a new analysis handler for HTTP requests using the given services
-func newAnalysisHandler(streamService stream.IService, ) *analysisHandler {
+func newAnalysisHandler(streamService stream.IService, useCase *usecases.ComputePercentilesUseCase) *analysisHandler {
 	return &analysisHandler{
-		streamService:  streamService,
-		computeService: computeService,
+		streamService: streamService,
+		useCase:       useCase,
 	}
 }
 
-// analyseData will check for two query arguments, duration and dimension
-// - duration is an integer that can either be follow by "s", "m", or "h", and represents the duration that the stream connection will be maintained
-// - dimension is the metric we'll monitor, and can be either "likes", "favourites", "comments", or "retweets"
-// If either of these query argument are missing, we'll throw an error 400
-// When the duration is reached, the connection to the stream is cut and we'll return a JSON payload that'll contain the total number of posts analyzed,
-// the timestamp range of the monitored, and the 50, 90, and 99 percentiles of the dimension that we chose to monitor
-func (h *analysisHandler) analyseData(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+// AnalyseData handles the GET /analysis request.
+func (h *analysisHandler) AnalyseData(c echo.Context) error {
+	ctx := c.Request().Context()
+	timestamp := time.Now().UTC().Format(time.RFC3339)
+	reqID := c.Response().Header().Get(echo.HeaderXRequestID)
+	instance := c.Request().URL.Path
 
-	// fetching query parameters
-	durationStr := r.URL.Query().Get("duration")
-	dimensionStr := r.URL.Query().Get("dimension")
+	var req AnalysisRequest
 
-	if strings.TrimSpace(durationStr) == "" {
-		http.Error(w, "'duration' parameter is missing!", http.StatusBadRequest)
-		return
+	// Binding parameters to the struct
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, ErrorResponse{
+			Title:     "Bad Request",
+			Status:    http.StatusBadRequest,
+			Detail:    "Failed to parse query parameters.",
+			Instance:  instance,
+			RequestID: reqID,
+			Timestamp: timestamp,
+		})
 	}
 
-	// parsing duration
-	duration, err := time.ParseDuration(durationStr)
-	if err != nil {
-		http.Error(w, "duration format invalid! (value should either be in seconds 's', minutes 'm', or hours 'h')", http.StatusBadRequest)
-		return
+	// Validating the struct using our custom Echo validator
+	if err := c.Validate(&req); err != nil {
+		var valErr *ValidationError
+		// If the error is our custom ValidationError, we inject its map into our RFC 7807 response
+		if errors.As(err, &valErr) {
+			return c.JSON(http.StatusBadRequest, ErrorResponse{
+				Title:     "Validation Error",
+				Status:    http.StatusBadRequest,
+				Detail:    "One or more query parameters are invalid or missing.",
+				Instance:  instance,
+				RequestID: reqID,
+				Timestamp: timestamp,
+				Errors:    valErr.Errors, // The detailed map is dynamically injected here!
+			})
+		}
 	}
 
-	if strings.TrimSpace(dimensionStr) == "" {
-		http.Error(w, "'dimension' parameter is missing!", http.StatusBadRequest)
-		return
-	}
+	// Since validation passed, we safely parse the duration
+	// (we know it won't fail because the validator already checked it)
+	duration, _ := time.ParseDuration(req.Duration)
+	dimension := strings.ToLower(req.Dimension)
 
-	// checking for allowed dimension
-	allowedDimensions := []string{"likes", "comments", "favorites", "retweets"} // passer ca dans des variables d'environement je pense
-
-	isValidDimension := slices.Contains(allowedDimensions, strings.ToLower(dimensionStr))
-	if !isValidDimension {
-		http.Error(w, "dimension is not supported! (current handled dimension are 'likes', 'comments', 'favorites', and 'retweets')", http.StatusBadRequest)
-		return
-	}
-
-	// reading data from stream
+	// Fetching data from the stream
 	data, err := h.streamService.GetStream(duration)
 	if err != nil {
-		log.Printf("error: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		c.Logger().Errorf("RequestID: %s - Failed to fetch stream data: %v", reqID, err)
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Title:     "Internal Server Error",
+			Status:    http.StatusInternalServerError,
+			Detail:    "An error occurred while fetching data from the upstream service.",
+			Instance:  instance,
+			RequestID: reqID,
+			Timestamp: timestamp,
+		})
 	}
 
-	var metrics []uint32
-	minTimestamp := ^int64(0)
-	maxTimestamp := int64(0)
-
-	for _, item := range data {
-		// timestamps
-		if item.Timestamp < minTimestamp {
-			minTimestamp = item.Timestamp
-		}
-		if item.Timestamp > maxTimestamp {
-			maxTimestamp = item.Timestamp
-		}
-
-		switch dimensionStr {
-		case "likes":
-			if item.Likes != nil {
-				metrics = append(metrics, *item.Likes)
-			}
-		case "comments":
-			if item.Comments != nil {
-				metrics = append(metrics, *item.Comments)
-			}
-		case "favorites":
-			if item.Favorites != nil {
-				metrics = append(metrics, *item.Favorites)
-			}
-		case "retweets":
-			if item.Retweets != nil {
-				metrics = append(metrics, *item.Retweets)
-			}
-		}
-	}
-
-	// 50th percentile
-	p50, err := h.computeService.ComputePercentile(ctx, metrics, 0.5)
+	// Executing Use Case
+	result, err := h.useCase.Execute(ctx, data, dimension)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		c.Logger().Errorf("RequestID: %s - Failed to compute percentiles: %v", reqID, err)
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Title:     "Internal Server Error",
+			Status:    http.StatusInternalServerError,
+			Detail:    "An error occurred while computing the statistics.",
+			Instance:  instance,
+			RequestID: reqID,
+			Timestamp: timestamp,
+		})
 	}
 
-	// 90th percentile
-	p90, err := h.computeService.ComputePercentile(ctx, metrics, 0.9)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// Return response
+	responseDTO := AnalysisResponse{
+		TotalPosts:   result.TotalPosts,
+		MinTimestamp: result.MinTimestamp,
+		MaxTimestamp: result.MaxTimestamp,
+		Dimension:    result.Dimension,
+		P50:          result.P50,
+		P90:          result.P90,
+		P99:          result.P99,
 	}
 
-	// 99th percentile
-	p99, err := h.computeService.ComputePercentile(ctx, metrics, 0.99)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// payload mapped to DTO
-	responseDTO := AnalysisResponseDTO{
-		TotalPosts:   len(data),
-		MinTimestamp: minTimestamp,
-		MaxTimestamp: maxTimestamp,
-		Dimension:    dimensionStr,
-		P50:          p50,
-		P90:          p90,
-		P99:          p99,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(responseDTO.ToJSONMap()); err != nil {
-		panic(err)
-	}
+	return c.JSON(http.StatusOK, responseDTO.ToJSONMap())
 }
