@@ -17,7 +17,7 @@ func NewService() *Service {
 	return &Service{}
 }
 
-func (s *Service) ComputePercentile(_ context.Context, dataset []uint32, percentile float32) (float32, error) {
+func (s *Service) ComputePercentile(ctx context.Context, dataset []uint32, percentile float32) (float32, error) {
 	// first, we check if the percentile value ranges between 0 and 1 (inclusive), if not => error
 	if percentile < 0 || percentile > 1 {
 		return 0, fmt.Errorf("percentile value %f is not valid", percentile)
@@ -25,7 +25,7 @@ func (s *Service) ComputePercentile(_ context.Context, dataset []uint32, percent
 
 	// then we check if the dataset is empty or has exactly one value
 	if len(dataset) < MinDatasetLength {
-		return 0, fmt.Errorf("dataset is empty or doesn't contain enough values (minimum expected values: %d)", MinDatasetLength)
+		return 0, nil
 	}
 
 	// we make sure our dataset is sorted

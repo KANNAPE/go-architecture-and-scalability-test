@@ -1,4 +1,4 @@
-package http
+package analysis
 
 import "fmt"
 

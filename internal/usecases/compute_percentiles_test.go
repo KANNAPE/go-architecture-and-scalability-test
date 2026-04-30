@@ -115,10 +115,10 @@ func TestComputePercentilesUseCase_Execute(t *testing.T) {
 			data: []stream.Data{
 				{ID: 1, Timestamp: 1000, Likes: ptrUint32(10)}, // Only 1 valid metric, minimum required is 2
 			},
-			dimension:      "likes",
-			mockService:    &mockComputeService{realService: realCompute},
-			expectedError:  true,
-			expectedErrMsg: "not enough data found for dimension 'likes' to compute percentiles",
+			dimension:     "likes",
+			mockService:   &mockComputeService{realService: realCompute},
+			expectedError: false,
+			expectedLen:   1,
 		},
 
 		// 4. Error cases: Mocking compute errors (Covers the 3 error return branches of p50, p90, p99)

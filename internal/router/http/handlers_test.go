@@ -13,6 +13,8 @@ import (
 	"kannape.com/upfluence-test/internal/services/compute"
 	"kannape.com/upfluence-test/internal/services/stream"
 	"kannape.com/upfluence-test/internal/usecases"
+
+	analysisAPI "kannape.com/upfluence-test/pkg/http/analysis"
 )
 
 // mockStreamService is a fake implementation of stream.IService used for testing.
@@ -107,8 +109,9 @@ func TestAnalyseData(t *testing.T) {
 				{ID: 1, Timestamp: 1000, Likes: ptrUint32(10)}, // Data is fetched but no comments
 			},
 			mockStreamErr:      nil,
-			expectedStatus:     http.StatusInternalServerError,
-			expectErrorPayload: true,
+			expectedStatus:     http.StatusOK,
+			expectErrorPayload: false,
+			expectedTotalPosts: 1,
 		},
 	}
 
@@ -177,7 +180,7 @@ func TestValidator(t *testing.T) {
 	v := &RequestValidator{}
 
 	// Case 1: Valid struct
-	validReq := &AnalysisRequest{
+	validReq := &analysisAPI.AnalysisRequest{
 		Duration:  "5m",
 		Dimension: "likes",
 	}
@@ -191,7 +194,7 @@ func TestValidator(t *testing.T) {
 	}
 
 	// Case 3: Missing parameters to trigger ValidationError
-	invalidReq := &AnalysisRequest{
+	invalidReq := &analysisAPI.AnalysisRequest{
 		Duration:  "",
 		Dimension: "",
 	}
@@ -214,7 +217,7 @@ func TestValidator(t *testing.T) {
 }
 
 func TestAnalysisResponseDTO(t *testing.T) {
-	dto := AnalysisResponse{
+	dto := analysisAPI.AnalysisResponse{
 		TotalPosts:   42,
 		MinTimestamp: 1000,
 		MaxTimestamp: 5000,

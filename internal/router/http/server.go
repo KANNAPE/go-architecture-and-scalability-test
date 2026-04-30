@@ -1,6 +1,9 @@
 package http
 
 import (
+	"context"
+	"log/slog"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
@@ -33,7 +36,7 @@ func NewServer(streamRepo stream.IRepository) *Server {
 }
 
 // Start configures the dependencies, registers routes, and starts listening.
-func (server *Server) Start() error {
+func (server *Server) Start(ctx context.Context) error {
 	// Initialize services
 	streamService := stream.NewService(server.streamRepo)
 	computeService := compute.NewService()
@@ -42,12 +45,12 @@ func (server *Server) Start() error {
 	computePercentilesUseCase := usecases.NewComputePercentilesUseCase(computeService)
 
 	// Initialize Handlers
-	analysisHandler := newAnalysisHandler(streamService, computePercentilesUseCase)
+	analysisHdl := newAnalysisHandler(streamService, computePercentilesUseCase)
 
 	// Register HTTP routes
-	// Any other requests not matching this will automatically return a 404 from Echo
-	server.router.GET("/analysis", analysisHandler.AnalyseData)
+	registerRoutes(server, analysisHdl)
 
 	// Start the HTTP server on port 8080
+	slog.InfoContext(ctx, "Listening on localhost:8080...")
 	return server.router.Start(":8080")
 }

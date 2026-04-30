@@ -11,6 +11,8 @@ import (
 
 	"kannape.com/upfluence-test/internal/services/stream"
 	"kannape.com/upfluence-test/internal/usecases"
+
+	analysisAPI "kannape.com/upfluence-test/pkg/http/analysis"
 )
 
 type analysisHandler struct {
@@ -32,11 +34,11 @@ func (h *analysisHandler) AnalyseData(c echo.Context) error {
 	reqID := c.Response().Header().Get(echo.HeaderXRequestID)
 	instance := c.Request().URL.Path
 
-	var req AnalysisRequest
+	var req analysisAPI.AnalysisRequest
 
 	// Binding parameters to the struct
 	if err := c.Bind(&req); err != nil {
-		slog.Warn("failed to bind query parameters", slog.String("request_id", reqID), slog.String("error", err.Error()))
+		slog.WarnContext(ctx, "failed to bind query parameters", slog.String("request_id", reqID), slog.String("error", err.Error()))
 		return c.JSON(http.StatusBadRequest, ErrorResponse{
 			Title:     "Bad Request",
 			Status:    http.StatusBadRequest,
@@ -52,7 +54,7 @@ func (h *analysisHandler) AnalyseData(c echo.Context) error {
 		var valErr *ValidationError
 		// If the error is our custom ValidationError, we inject its map into our RFC 7807 response
 		if errors.As(err, &valErr) {
-			slog.Info("validation failed for analysis request", slog.String("request_id", reqID))
+			slog.InfoContext(ctx, "validation failed for analysis request", slog.String("request_id", reqID))
 			return c.JSON(http.StatusBadRequest, ErrorResponse{
 				Title:     "Validation Error",
 				Status:    http.StatusBadRequest,
@@ -70,7 +72,7 @@ func (h *analysisHandler) AnalyseData(c echo.Context) error {
 	duration, _ := time.ParseDuration(req.Duration)
 	dimension := strings.ToLower(req.Dimension)
 
-	slog.Info("processing analysis request",
+	slog.InfoContext(ctx, "processing analysis request",
 		slog.String("request_id", reqID),
 		slog.String("duration", duration.String()),
 		slog.String("dimension", dimension),
@@ -79,7 +81,7 @@ func (h *analysisHandler) AnalyseData(c echo.Context) error {
 	// Fetching data from the stream
 	data, err := h.streamService.GetStream(duration)
 	if err != nil {
-		slog.Error("failed to fetch stream data", slog.String("request_id", reqID), slog.String("error", err.Error()))
+		slog.ErrorContext(ctx, "failed to fetch stream data", slog.String("request_id", reqID), slog.String("error", err.Error()))
 		return c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Title:     "Internal Server Error",
 			Status:    http.StatusInternalServerError,
@@ -93,7 +95,7 @@ func (h *analysisHandler) AnalyseData(c echo.Context) error {
 	// Executing Use Case
 	result, err := h.useCase.Execute(ctx, data, dimension)
 	if err != nil {
-		slog.Error("failed to compute percentiles", slog.String("request_id", reqID), slog.String("error", err.Error()))
+		slog.ErrorContext(ctx, "failed to compute percentiles", slog.String("request_id", reqID), slog.String("error", err.Error()))
 		return c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Title:     "Internal Server Error",
 			Status:    http.StatusInternalServerError,
@@ -104,13 +106,13 @@ func (h *analysisHandler) AnalyseData(c echo.Context) error {
 		})
 	}
 
-	slog.Info("successfully computed analysis",
+	slog.InfoContext(ctx, "successfully computed analysis",
 		slog.String("request_id", reqID),
 		slog.Int("total_posts", result.TotalPosts),
 	)
 
 	// Return response
-	responseDTO := AnalysisResponse{
+	responseDTO := analysisAPI.AnalysisResponse{
 		TotalPosts:   result.TotalPosts,
 		MinTimestamp: result.MinTimestamp,
 		MaxTimestamp: result.MaxTimestamp,

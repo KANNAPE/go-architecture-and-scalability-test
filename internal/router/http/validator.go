@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	analysisAPI "kannape.com/upfluence-test/pkg/http/analysis"
 )
 
 // ValidationError is a custom error type that holds a map of invalid fields and their reasons.
@@ -22,7 +24,7 @@ type RequestValidator struct{}
 // Validate checks the struct fields and populates the error map if any rules are broken.
 func (v *RequestValidator) Validate(i interface{}) error {
 	// We check if the interface is our AnalysisRequest
-	if req, ok := i.(*AnalysisRequest); ok {
+	if req, ok := i.(*analysisAPI.AnalysisRequest); ok {
 		validationErrors := make(map[string]interface{})
 
 		// Validate 'duration'

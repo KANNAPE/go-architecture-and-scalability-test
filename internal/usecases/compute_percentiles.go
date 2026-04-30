@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"kannape.com/upfluence-test/internal/services/compute"
 	"kannape.com/upfluence-test/internal/services/stream"
@@ -36,8 +37,9 @@ func NewComputePercentilesUseCase(computeService compute.IService) *ComputePerce
 
 // Execute parses the raw stream data, extracts the relevant metrics
 // for the requested dimension, and computes the required percentiles.
-func (uc *ComputePercentilesUseCase) Execute(ctx context.Context, data []stream.Data, dimension string) (ComputePercentilesResult, error) {
+func (uc *ComputePercentilesUseCase) Execute(ctx context.Context, data []stream.Data, dimension string) (*ComputePercentilesResult, error) {
 	var metrics []uint32
+	var err error
 
 	// initialize minTimestamp to the maximum possible int64 value
 	// initialize maxTimestamp to 0
@@ -46,7 +48,7 @@ func (uc *ComputePercentilesUseCase) Execute(ctx context.Context, data []stream.
 
 	// handle the case where the stream returned no data
 	if len(data) == 0 {
-		return ComputePercentilesResult{
+		return &ComputePercentilesResult{
 			TotalPosts: 0,
 			Dimension:  dimension,
 		}, nil
@@ -82,37 +84,37 @@ func (uc *ComputePercentilesUseCase) Execute(ctx context.Context, data []stream.
 		}
 	}
 
-	// ensure we have enough data points to compute percentiles
+	resultStruct := &ComputePercentilesResult{
+		TotalPosts:   len(data),
+		Dimension:    dimension,
+		MinTimestamp: minTimestamp,
+		MaxTimestamp: maxTimestamp,
+	}
+
+	// if we have not enough data to compute the percentiles, we early return
 	if len(metrics) < compute.MinDatasetLength {
-		return ComputePercentilesResult{}, fmt.Errorf("not enough data found for dimension '%s' to compute percentiles", dimension)
+		slog.WarnContext(ctx, "not enough data to compute percentiles for dimension", slog.String("dimension", dimension))
+		return resultStruct, nil
 	}
 
 	// compute the 50th percentile
-	p50, err := uc.computeService.ComputePercentile(ctx, metrics, 0.5)
+	resultStruct.P50, err = uc.computeService.ComputePercentile(ctx, metrics, 0.5)
 	if err != nil {
-		return ComputePercentilesResult{}, fmt.Errorf("failed to compute p50: %w", err)
+		return nil, fmt.Errorf("failed to compute p50: %w", err)
 	}
 
 	// compute the 90th percentile
-	p90, err := uc.computeService.ComputePercentile(ctx, metrics, 0.9)
+	resultStruct.P90, err = uc.computeService.ComputePercentile(ctx, metrics, 0.9)
 	if err != nil {
-		return ComputePercentilesResult{}, fmt.Errorf("failed to compute p90: %w", err)
+		return nil, fmt.Errorf("failed to compute p90: %w", err)
 	}
 
 	// compute the 99th percentile
-	p99, err := uc.computeService.ComputePercentile(ctx, metrics, 0.99)
+	resultStruct.P99, err = uc.computeService.ComputePercentile(ctx, metrics, 0.99)
 	if err != nil {
-		return ComputePercentilesResult{}, fmt.Errorf("failed to compute p99: %w", err)
+		return nil, fmt.Errorf("failed to compute p99: %w", err)
 	}
 
 	// return the final aggregated result
-	return ComputePercentilesResult{
-		TotalPosts:   len(data),
-		MinTimestamp: minTimestamp,
-		MaxTimestamp: maxTimestamp,
-		Dimension:    dimension,
-		P50:          p50,
-		P90:          p90,
-		P99:          p99,
-	}, nil
+	return resultStruct, nil
 }
