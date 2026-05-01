@@ -5,7 +5,7 @@ MAIN_PATH=./cmd/server/main.go
 # Default target
 .DEFAULT_GOAL := help
 
-.PHONY: help build run test coverage clean deps
+.PHONY: help deps check build run test coverage clean check
 
 help:
 	@echo "Usage: make [target]"
@@ -16,6 +16,10 @@ help:
 deps: ## Download and tidy dependencies
 	go mod download
 	go mod tidy
+
+check: ## Run gofumpt & go vet 
+	gofumpt -l -w .
+	go vet ./...
 
 build: deps ## Build the binary for production
 	go build -o bin/$(BINARY_NAME) $(MAIN_PATH)
@@ -31,3 +35,5 @@ coverage: ## Run tests and generate coverage report
 
 clean: ## Remove binary files
 	rm -rf bin/
+
+check: deps build test # Run full CI pipeline
