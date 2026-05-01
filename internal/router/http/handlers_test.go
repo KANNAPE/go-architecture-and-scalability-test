@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
+	"kannape.com/upfluence-test/internal/config"
 	"kannape.com/upfluence-test/internal/services/compute"
 	"kannape.com/upfluence-test/internal/services/stream"
 	"kannape.com/upfluence-test/internal/usecases"
@@ -26,6 +28,13 @@ type mockStreamService struct {
 
 func (m *mockStreamService) GetStream(ctx context.Context) ([]stream.Data, error) {
 	return m.mockData, m.mockErr
+}
+
+// mockComputeServiceFailing forces an error during percentile computation.
+type mockComputeServiceFailing struct{}
+
+func (m *mockComputeServiceFailing) ComputePercentile(ctx context.Context, dataset []uint32, percentile float32) (float32, error) {
+	return 0, errors.New("simulated compute error")
 }
 
 // ptrUint32 is a small helper to create pointers to uint32 inline
@@ -248,12 +257,73 @@ func TestAnalysisResponseDTO(t *testing.T) {
 func TestServerInitialization(t *testing.T) {
 	// Simple test to ensure NewServer doesn't panic and wires correctly
 	mockStream := &mockStreamService{}
-	server := NewServer(mockStream)
+	server := NewServer(nil, mockStream)
 
 	if server == nil {
 		t.Fatalf("expected server to be initialized")
 	}
 	if server.router == nil {
 		t.Errorf("expected router to be initialized")
+	}
+}
+
+func TestAnalyseData_UseCaseError(t *testing.T) {
+	// Setup Echo and context
+	e := echo.New()
+	e.Validator = &RequestValidator{}
+	req := httptest.NewRequest(http.MethodGet, "/analysis?duration=1s&dimension=likes", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// Setup mock stream with valid data
+	mockStream := &mockStreamService{
+		mockData: []stream.Data{
+			{ID: 1, Timestamp: 1000, Likes: ptrUint32(10)},
+			{ID: 2, Timestamp: 2000, Likes: ptrUint32(20)},
+		},
+	}
+
+	// Inject the failing compute mock into the use case
+	mockCompute := &mockComputeServiceFailing{}
+	useCase := usecases.NewComputePercentilesUseCase(mockCompute)
+
+	handler := newAnalysisHandler(mockStream, useCase)
+
+	// Execute the handler
+	err := handler.AnalyseData(c)
+
+	// Assert that it correctly reaches the Internal Server Error branch
+	var actualStatus int
+	if he, ok := err.(*echo.HTTPError); ok {
+		actualStatus = he.Code
+	} else {
+		actualStatus = rec.Code
+	}
+
+	if actualStatus != http.StatusInternalServerError {
+		t.Errorf("expected status 500, got %d", actualStatus)
+	}
+}
+
+func TestServerStart(t *testing.T) {
+	mockStream := &mockStreamService{}
+
+	// Load default config (will use default port 8080 or random port if 0)
+	cfg := config.LoadFromEnvironment()
+	server := NewServer(cfg, mockStream)
+
+	// We use a goroutine to close the server almost immediately after it starts.
+	// This prevents the test from blocking forever while still executing the code inside Start().
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		_ = server.router.Close()
+	}()
+
+	// Execute Start (it will unblock when the goroutine calls Close)
+	err := server.Start(context.Background())
+
+	// http.ErrServerClosed is the expected error when calling Close()
+	if err != nil && err.Error() != http.ErrServerClosed.Error() {
+		t.Errorf("unexpected error during server start: %v", err)
 	}
 }

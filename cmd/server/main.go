@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"kannape.com/upfluence-test/internal/config"
 	"kannape.com/upfluence-test/internal/platforms/stream"
 	"kannape.com/upfluence-test/internal/router/http"
 )
@@ -18,6 +19,8 @@ func main() {
 	appCtx, stopAppCtx := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stopAppCtx()
 
+	cfg := config.LoadFromEnvironment()
+
 	// Initialize a structured JSON logger
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
@@ -25,21 +28,13 @@ func main() {
 	slog.InfoContext(appCtx, "starting Upfluence Analysis API server...")
 
 	// Initialize the Upfluence stream platform
-	streamRepo := stream.NewUpfluenceStream("https://stream.upfluence.co")
+	streamRepo := stream.NewUpfluenceStream(cfg.GetStreamConnection())
 
 	// Initialize and start the HTTP server
-	server := http.NewServer(streamRepo)
+	server := http.NewServer(cfg, streamRepo)
 
 	if err := server.Start(appCtx); err != nil {
 		slog.ErrorContext(appCtx, "server crashed", "error", err.Error())
 		panic(fmt.Errorf("http server crashed: %w", err))
 	}
 }
-
-/*
-	todo:
-	- rajouter un makefile pour faire genre je m'y connais de zinzin
-	- rajouter un .env avec les variables globales dedans
-	- faire ce ptn de readme
-	- envoyer et être embauché (fuck la prison)
-*/

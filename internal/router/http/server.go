@@ -2,11 +2,13 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"kannape.com/upfluence-test/internal/config"
 	"kannape.com/upfluence-test/internal/services/compute"
 	"kannape.com/upfluence-test/internal/services/stream"
 	"kannape.com/upfluence-test/internal/usecases"
@@ -14,11 +16,12 @@ import (
 
 type Server struct {
 	router     *echo.Echo
+	appCfg     *config.Environment
 	streamRepo stream.IRepository
 }
 
 // NewServer initializes a new HTTP server using the Echo framework.
-func NewServer(streamRepo stream.IRepository) *Server {
+func NewServer(cfg *config.Environment, streamRepo stream.IRepository) *Server {
 	e := echo.New()
 
 	// Attach global middlewares
@@ -31,6 +34,7 @@ func NewServer(streamRepo stream.IRepository) *Server {
 
 	return &Server{
 		router:     e,
+		appCfg:     cfg,
 		streamRepo: streamRepo,
 	}
 }
@@ -51,6 +55,6 @@ func (server *Server) Start(ctx context.Context) error {
 	registerRoutes(server, analysisHdl)
 
 	// Start the HTTP server on port 8080
-	slog.InfoContext(ctx, "Listening on localhost:8080...")
-	return server.router.Start(":8080")
+	slog.InfoContext(ctx, "listening on localhost...", slog.Int("port", server.appCfg.GetHttpServerPort()))
+	return server.router.Start(fmt.Sprintf(":%d", server.appCfg.GetHttpServerPort()))
 }
