@@ -1,13 +1,15 @@
 package stream
 
-import "time"
+import (
+	"context"
+)
 
 type IRepository interface {
-	GetStream(duration time.Duration) ([]Data, error)
+	GetStream(ctx context.Context) ([]Data, error)
 }
 
 type IService interface {
-	GetStream(duration time.Duration) ([]Data, error)
+	GetStream(ctx context.Context) ([]Data, error)
 }
 
 type Data struct {

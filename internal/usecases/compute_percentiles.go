@@ -48,6 +48,7 @@ func (uc *ComputePercentilesUseCase) Execute(ctx context.Context, data []stream.
 
 	// handle the case where the stream returned no data
 	if len(data) == 0 {
+		slog.WarnContext(ctx, "no data returned from stream")
 		return &ComputePercentilesResult{
 			TotalPosts: 0,
 			Dimension:  dimension,
@@ -100,18 +101,21 @@ func (uc *ComputePercentilesUseCase) Execute(ctx context.Context, data []stream.
 	// compute the 50th percentile
 	resultStruct.P50, err = uc.computeService.ComputePercentile(ctx, metrics, 0.5)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to compute p50")
 		return nil, fmt.Errorf("failed to compute p50: %w", err)
 	}
 
 	// compute the 90th percentile
 	resultStruct.P90, err = uc.computeService.ComputePercentile(ctx, metrics, 0.9)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to compute p90")
 		return nil, fmt.Errorf("failed to compute p90: %w", err)
 	}
 
 	// compute the 99th percentile
 	resultStruct.P99, err = uc.computeService.ComputePercentile(ctx, metrics, 0.99)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to compute p99")
 		return nil, fmt.Errorf("failed to compute p99: %w", err)
 	}
 

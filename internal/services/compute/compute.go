@@ -3,6 +3,7 @@ package compute
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 )
 
@@ -20,6 +21,7 @@ func NewService() *Service {
 func (s *Service) ComputePercentile(ctx context.Context, dataset []uint32, percentile float32) (float32, error) {
 	// first, we check if the percentile value ranges between 0 and 1 (inclusive), if not => error
 	if percentile < 0 || percentile > 1 {
+		slog.WarnContext(ctx, "percentile value is not valid", slog.Any("percentile", percentile))
 		return 0, fmt.Errorf("percentile value %f is not valid", percentile)
 	}
 

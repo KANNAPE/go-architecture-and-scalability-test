@@ -1,9 +1,9 @@
 package stream
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
-	"time"
 )
 
 // stream package will get all the data from the stream in the given time window
@@ -18,10 +18,11 @@ func NewService(repo IRepository) *Service {
 	}
 }
 
-func (service *Service) GetStream(duration time.Duration) ([]Data, error) {
-	dataArray, err := service.repo.GetStream(duration)
+func (service *Service) GetStream(ctx context.Context) ([]Data, error) {
+	dataArray, err := service.repo.GetStream(ctx)
 	if err != nil {
 		if len(dataArray) == 0 {
+			slog.ErrorContext(ctx, "failed to get stream")
 			return nil, fmt.Errorf("failed to get stream from repo: %w", err)
 		}
 

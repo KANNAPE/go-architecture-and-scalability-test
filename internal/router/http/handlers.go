@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -78,8 +79,11 @@ func (h *analysisHandler) AnalyseData(c echo.Context) error {
 		slog.String("dimension", dimension),
 	)
 
+	timeoutCtx, cancel := context.WithTimeout(ctx, duration)
+	defer cancel()
+
 	// Fetching data from the stream
-	data, err := h.streamService.GetStream(duration)
+	data, err := h.streamService.GetStream(timeoutCtx)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to fetch stream data", slog.String("request_id", reqID), slog.String("error", err.Error()))
 		return c.JSON(http.StatusInternalServerError, ErrorResponse{

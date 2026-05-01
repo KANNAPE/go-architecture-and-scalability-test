@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"kannape.com/upfluence-test/internal/services/stream"
 )
@@ -24,11 +23,7 @@ func NewUpfluenceStream(baseURL string) *Upfluence {
 	}
 }
 
-func (s *Upfluence) GetStream(duration time.Duration) ([]stream.Data, error) {
-	// concatenate baseURL with api endpoint /stream
-	ctx, cancel := context.WithTimeout(context.Background(), duration)
-	defer cancel()
-
+func (s *Upfluence) GetStream(ctx context.Context) ([]stream.Data, error) {
 	url := s.baseURL + "/stream"
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

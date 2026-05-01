@@ -1,6 +1,7 @@
 package stream_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -70,7 +71,10 @@ func TestUpfluence_GetStream(t *testing.T) {
 			// instantiate the client with the mock server's dynamically generated URL
 			client := platform_stream.NewUpfluenceStream(mockServer.URL)
 
-			data, err := client.GetStream(testcase.duration)
+			timeoutCtx, cancel := context.WithTimeout(context.Background(), testcase.duration)
+			defer cancel()
+
+			data, err := client.GetStream(timeoutCtx)
 
 			if testcase.expectedErr && err == nil {
 				t.Fatalf("expected an error but got nil")

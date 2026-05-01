@@ -38,7 +38,6 @@ func main() {
 
 /*
 	todo:
-	- logger pas dans les handlers mais dans les services et les usecases (et leur donner le contexte)
 	- rajouter un makefile pour faire genre je m'y connais de zinzin
 	- rajouter un .env avec les variables globales dedans
 	- faire ce ptn de readme

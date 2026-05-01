@@ -1,12 +1,12 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -24,7 +24,7 @@ type mockStreamService struct {
 	mockErr  error
 }
 
-func (m *mockStreamService) GetStream(duration time.Duration) ([]stream.Data, error) {
+func (m *mockStreamService) GetStream(ctx context.Context) ([]stream.Data, error) {
 	return m.mockData, m.mockErr
 }
 
@@ -115,20 +115,20 @@ func TestAnalyseData(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, testcase := range tests {
+		t.Run(testcase.name, func(t *testing.T) {
 			// 1. Setup the Echo context and HTTP recorder
 			e := echo.New()
 			e.Validator = &RequestValidator{} // Inject our custom validator
 
-			req := httptest.NewRequest(http.MethodGet, "/analysis"+tc.queryParams, nil)
+			req := httptest.NewRequest(http.MethodGet, "/analysis"+testcase.queryParams, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
 			// 2. Setup the handler with the mock stream service
 			mockStream := &mockStreamService{
-				mockData: tc.mockStreamData,
-				mockErr:  tc.mockStreamErr,
+				mockData: testcase.mockStreamData,
+				mockErr:  testcase.mockStreamErr,
 			}
 			handler := newAnalysisHandler(mockStream, useCase)
 
@@ -145,12 +145,12 @@ func TestAnalyseData(t *testing.T) {
 			}
 
 			// 4. Assert the HTTP Status Code
-			if actualStatus != tc.expectedStatus {
-				t.Errorf("expected status %d, got %d", tc.expectedStatus, actualStatus)
+			if actualStatus != testcase.expectedStatus {
+				t.Errorf("expected status %d, got %d", testcase.expectedStatus, actualStatus)
 			}
 
 			// 5. Assert the payload structure
-			if tc.expectErrorPayload {
+			if testcase.expectErrorPayload {
 				var errResp ErrorResponse
 				if err := json.Unmarshal(rec.Body.Bytes(), &errResp); err != nil {
 					t.Fatalf("failed to unmarshal error response: %v", err)
@@ -168,8 +168,8 @@ func TestAnalyseData(t *testing.T) {
 				if !ok {
 					t.Fatalf("total_posts field is missing or not a number")
 				}
-				if int(actualTotalPosts) != tc.expectedTotalPosts {
-					t.Errorf("expected total_posts %d, got %d", tc.expectedTotalPosts, int(actualTotalPosts))
+				if int(actualTotalPosts) != testcase.expectedTotalPosts {
+					t.Errorf("expected total_posts %d, got %d", testcase.expectedTotalPosts, int(actualTotalPosts))
 				}
 			}
 		})

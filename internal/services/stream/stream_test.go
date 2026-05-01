@@ -1,9 +1,9 @@
 package stream_test
 
 import (
+	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"kannape.com/upfluence-test/internal/services/stream"
 )
@@ -16,7 +16,7 @@ type mockRepository struct {
 }
 
 // GetStream returns the injected mock data and mock error.
-func (m *mockRepository) GetStream(duration time.Duration) ([]stream.Data, error) {
+func (m *mockRepository) GetStream(ctx context.Context) ([]stream.Data, error) {
 	return m.mockData, m.mockErr
 }
 
@@ -65,30 +65,30 @@ func TestService_GetStream(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, testcase := range tests {
+		t.Run(testcase.name, func(t *testing.T) {
 			// 1. Setup the mock repository and the service
 			repo := &mockRepository{
-				mockData: tc.mockData,
-				mockErr:  tc.mockErr,
+				mockData: testcase.mockData,
+				mockErr:  testcase.mockErr,
 			}
 			service := stream.NewService(repo)
 
 			// 2. Execute the method
 			// The duration parameter doesn't matter here since we mock the repository
-			data, err := service.GetStream(time.Second)
+			data, err := service.GetStream(t.Context())
 
 			// 3. Assert error expectations
-			if tc.expectedError && err == nil {
+			if testcase.expectedError && err == nil {
 				t.Fatalf("expected an error but got nil")
 			}
-			if !tc.expectedError && err != nil {
+			if !testcase.expectedError && err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
 			// 4. Assert data expectations
-			if len(data) != tc.expectedLen {
-				t.Errorf("expected array length %d, got %d", tc.expectedLen, len(data))
+			if len(data) != testcase.expectedLen {
+				t.Errorf("expected array length %d, got %d", testcase.expectedLen, len(data))
 			}
 		})
 	}
