@@ -85,6 +85,3 @@ The server will listen by default on port 8080 of the localhost, but you can con
 - **Framework**: Echo v4 (chosen for performance and middleware support).
 - **Logging**: slog (structured JSON logging).
 - **Standard Library**: used for everything else (math, strings, time, buffering).
-
----
-Thank you for your time.
